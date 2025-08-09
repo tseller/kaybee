@@ -13,7 +13,7 @@ WORKDIR $APP_HOME
 # Install production dependencies.
 RUN pip install pipenv
 COPY Pipfile Pipfile.lock ./
-RUN PIPENV_VENV_IN_PROJECT=1 pipenv install --system --deploy --ignore-pipfile
+RUN pipenv sync --system
 
 COPY . ./
 WORKDIR $APP_HOME/app
