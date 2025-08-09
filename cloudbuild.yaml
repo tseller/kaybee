@@ -1,0 +1,23 @@
+steps:
+- name: 'Docker Build'
+  name: 'docker:latest'
+  args: [
+    'build', '-t',
+    'us-central1-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/kaybee',
+    '.'
+  ]
+- name: 'Docker Push'
+  name: 'docker:latest'
+  args: [
+    'push',
+    'us-central1-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/kaybee'
+  ]
+- name: 'Deploy to Cloud Run'
+  name: 'google/cloud-sdk'
+  args: [
+    'gcloud', 'run', 'deploy', 'kaybee',
+    '--image=us-central1-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/kaybee',
+    '--region', 'us-central1', '--platform', 'managed',
+    '--memory=1Gi',
+    '--env-vars-file', '.env.yaml',
+  ]
