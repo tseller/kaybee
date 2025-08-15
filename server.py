@@ -57,8 +57,8 @@ trace.set_tracer_provider(provider)
 # Create FastAPI app with appropriate arguments
 app: FastAPI = get_fast_api_app(**app_args)
 
-app.title = "weather-agent"
-app.description = "API for interacting with the Agent weather-agent"
+app.title = "kaybee-agent"
+app.description = "API for interacting with the Agent"
 
 
 class Feedback(BaseModel):
@@ -68,7 +68,7 @@ class Feedback(BaseModel):
     text: str | None = ""
     invocation_id: str
     log_type: Literal["feedback"] = "feedback"
-    service_name: Literal["weather-agent"] = "weather-agent"
+    service_name: Literal["kaybee-agent"] = "kaybee-agent"
     user_id: str = ""
 
 

@@ -1,6 +1,9 @@
-# Deploy, Manage, and Observe ADK Agent on Cloud Run
+# Simple ADK Agent on Cloud Run
 
 ## Deploy Agent to Cloud Run
+
+`chmod +x build.sh`
+`./build.sh`
 
 This deployment script will deploy the agent to Cloud Run. Make sure to replace the placeholders with your actual values. This assumes you have already created a Cloud SQL instance.
 

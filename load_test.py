@@ -39,7 +39,7 @@ class ChatStreamUser(HttpUser):
         session_id = f"session_{uuid.uuid4()}"
         session_data = {"state": {"preferred_language": "English", "visit_count": 5}}
         requests.post(
-            f"{self.client.base_url}/apps/weather_agent/users/{user_id}/sessions/{session_id}",
+            f"{self.client.base_url}/apps/kaybee_agent/users/{user_id}/sessions/{session_id}",
             headers=headers,
             json=session_data,
             timeout=30,
@@ -47,7 +47,7 @@ class ChatStreamUser(HttpUser):
 
         # Send chat message
         data = {
-            "app_name": "weather_agent",
+            "app_name": "kaybee_agent",
             "user_id": user_id,
             "session_id": session_id,
             "new_message": {

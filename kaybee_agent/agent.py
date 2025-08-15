@@ -34,7 +34,7 @@ os.environ.setdefault("GOOGLE_CLOUD_LOCATION", "global")
 os.environ.setdefault("GOOGLE_GENAI_USE_VERTEXAI", "True")
 
 logging_client = google_cloud_logging.Client()
-logger = logging_client.logger("weather-agent")
+logger = logging_client.logger("kaybee-agent")
 
 
 def get_weather(city: str) -> dict:
@@ -80,7 +80,7 @@ def get_weather(city: str) -> dict:
 
 
 root_agent = Agent(
-    name="weather_agent",
+    name="knowledge_base_agent",
     model="gemini-2.5-flash",
     planner=BuiltInPlanner(
         thinking_config=types.ThinkingConfig(
