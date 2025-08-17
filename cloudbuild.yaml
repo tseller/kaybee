@@ -34,6 +34,7 @@ steps:
     '--region', 'us-central1',
     '--platform', 'managed',
     '--memory=1Gi',
+    '--allow-unauthenticated',
     '--env-vars-file', '.env.yaml',
     '--set-secrets=GOOGLE_API_KEY=VERTEX_AI_API_KEY:1'
   ]
