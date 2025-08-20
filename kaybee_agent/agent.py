@@ -13,7 +13,7 @@ from google.cloud import storage
 from typing import Optional
 
 from .knowledge_graph_tool import expand_query, update_knowledge
-from .prompt import PROMPT
+from .prompt import get_prompt
 
 # Load environment variables from .env file in root directory
 root_dir = Path(__file__).parent.parent
@@ -48,7 +48,7 @@ root_agent = Agent(
             thinking_budget=1024,
         )
     ),
-    instruction=PROMPT,
+    instruction=get_prompt(),
     tools=[update_knowledge],
     before_agent_callback=process_user_input,
 )
