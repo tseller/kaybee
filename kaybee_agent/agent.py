@@ -12,7 +12,8 @@ from google.cloud import logging as google_cloud_logging
 from google.cloud import storage
 from typing import Optional
 
-from .knowledge_graph_tool import expand_query, update_knowledge
+from .knowledge_graph_tool import (
+        expand_query, update_knowledge, delete_knowledge)
 from .prompt import get_prompt
 
 # Load environment variables from .env file in root directory
@@ -36,8 +37,8 @@ KNOWLEDGE_GRAPH_BUCKET = storage_client.get_bucket(
 def process_user_input(
         callback_context: CallbackContext) -> Optional[types.Content]:
     if text := callback_context.user_content.parts[-1].text:
-        return expand_query(text)
-
+        if kb_context := expand_query(text):
+            callback_context.user_content.parts.append(kb_context)
 
 root_agent = Agent(
     name="knowledge_base_agent",
@@ -49,6 +50,9 @@ root_agent = Agent(
         )
     ),
     instruction=get_prompt(),
-    tools=[update_knowledge],
+    tools=[
+        update_knowledge,
+        delete_knowledge,
+    ],
     before_agent_callback=process_user_input,
 )
