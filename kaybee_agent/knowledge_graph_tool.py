@@ -82,7 +82,7 @@ def expand_query(query: str) -> Optional[types.Part]:
 
     if relevant_entities_str or relationships_str:
         return types.Part(
-            text=f"Additional context: {relevant_entities_str}\n{relationships_str}"
+            text=f"(FYI, according to the knowledge base: {relevant_entities_str}\n{relationships_str}.)"
         )
 
 
@@ -176,7 +176,7 @@ def update_knowledge(entity: KnowledgeGraphEntity):
         if not target_entity_ids:
             new_target_entity_id = str(uuid.uuid4())
             target_entity_ids = [new_target_entity_id]
-            g['entities'][target_entity_id] = {
+            g['entities'][new_target_entity_id] = {
                 'entity_id': new_target_entity_id,
                 'entity_names': [relationship['target_entity']]
             }
