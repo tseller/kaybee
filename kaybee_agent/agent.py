@@ -12,9 +12,8 @@ from google.cloud import logging as google_cloud_logging
 from google.cloud import storage
 from typing import Optional
 
-from .knowledge_graph_tool import (
-    expand_query, add_entity, add_synonyms, remove_synonyms,
-    add_relationship, remove_relationship, delete_entity, get_entity_neighborhood)
+from .knowledge_graph_tool import expand_query
+from .knowledge_graph_agent import knowledge_graph_agent
 from .prompt import get_prompt
 
 # Load environment variables from .env file in root directory
@@ -52,13 +51,7 @@ root_agent = Agent(
     ),
     instruction=get_prompt(),
     tools=[
-        add_entity,
-        add_synonyms,
-        remove_synonyms,
-        add_relationship,
-        remove_relationship,
-        delete_entity,
-        get_entity_neighborhood,
+        knowledge_graph_agent,
     ],
     before_agent_callback=process_user_input,
 )
