@@ -13,7 +13,8 @@ from google.cloud import storage
 from typing import Optional
 
 from .knowledge_graph_tool import (
-        expand_query, update_knowledge, delete_knowledge)
+    expand_query, add_entity, add_synonyms, remove_synonyms,
+    add_relationship, remove_relationship, delete_entity)
 from .prompt import get_prompt
 
 # Load environment variables from .env file in root directory
@@ -51,8 +52,12 @@ root_agent = Agent(
     ),
     instruction=get_prompt(),
     tools=[
-        update_knowledge,
-        delete_knowledge,
+        add_entity,
+        add_synonyms,
+        remove_synonyms,
+        add_relationship,
+        remove_relationship,
+        delete_entity,
     ],
     before_agent_callback=process_user_input,
 )
