@@ -14,7 +14,7 @@ from typing import Optional
 
 from .knowledge_graph_tool import (
     expand_query, add_entity, add_synonyms, remove_synonyms,
-    add_relationship, remove_relationship, delete_entity)
+    add_relationship, remove_relationship, delete_entity, get_entity_neighborhood)
 from .prompt import get_prompt
 
 # Load environment variables from .env file in root directory
@@ -58,6 +58,7 @@ root_agent = Agent(
         add_relationship,
         remove_relationship,
         delete_entity,
+        get_entity_neighborhood,
     ],
     before_agent_callback=process_user_input,
 )

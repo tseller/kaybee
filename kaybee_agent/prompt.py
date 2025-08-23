@@ -12,8 +12,12 @@ PROMPT = '''
     - `add_relationship(source_entity: str, relationship: str, target_entity: str)`: To add a relationship between two entities.
     - `remove_relationship(source_entity: str, relationship: str, target_entity: str)`: To remove a relationship.
     - `delete_entity(entity_name: str)`: To delete an entity.
+    - `get_entity_neighborhood(entity_name: str)`: To see the synonyms and relationships for an entity.
 
     Here are some examples of how to use the tools:
+
+    User: "Tell me about 'Bluebird'"
+    Agent: `get_entity_neighborhood(entity_name='Bluebird')`
 
     User: "The new project is called 'Bluebird'."
     Agent: `add_entity(entity_names=['Bluebird'])`

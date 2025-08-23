@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from floggit import flog
 from pydantic import BaseModel, Field
 from typing import Optional
+from thefuzz import fuzz
 
 from google.genai import types
 from google.cloud import storage
@@ -95,12 +96,22 @@ def knowledge_graph_to_nx(g: dict) -> 'nx.MultiDiGraph':
 
     return mdg
 
-def _find_entity_id_by_name(entity_name: str, g: dict) -> Optional[str]:
-    """Finds an entity by its name or one of its synonyms."""
+def _find_entity_id_by_name(entity_name: str, g: dict, threshold: int = 80) -> Optional[str]:
+    """Finds an entity by its name or one of its synonyms using fuzzy string matching."""
+    best_match_score = 0
+    best_match_id = None
+
     for entity_id, entity_data in g['entities'].items():
-        if entity_name.lower() in [name.lower() for name in entity_data['entity_names']]:
-            return entity_id
-    return None
+        for name in entity_data['entity_names']:
+            score = fuzz.ratio(entity_name.lower(), name.lower())
+            if score > best_match_score:
+                best_match_score = score
+                best_match_id = entity_id
+
+    if best_match_score >= threshold:
+        return best_match_id
+    else:
+        return None
 
 @flog
 def add_entity(entity_names: list[str]) -> str:
@@ -207,7 +218,11 @@ def add_relationship(source_entity: str, relationship: str, target_entity: str) 
     g = fetch_knowledge_graph()
     source_id = _find_entity_id_by_name(source_entity, g)
     if not source_id:
-        return f"Error: Source entity '{source_entity}' not found."
+        source_id = str(uuid.uuid4())
+        g['entities'][source_id] = {
+            'entity_id': source_id,
+            'entity_names': [source_entity]
+        }
 
     target_id = _find_entity_id_by_name(target_entity, g)
     if not target_id:
@@ -297,3 +312,54 @@ def delete_entity(entity_name: str) -> str:
 
     store_knowledge_graph(g)
     return f"Entity '{entity_name}' and its relationships deleted successfully."
+
+
+@flog
+def get_entity_neighborhood(entity_name: str) -> str:
+    """
+    Retrieves and formats the neighborhood of a given entity, including its synonyms and relationships.
+
+    Args:
+        entity_name: The name of the entity to look up.
+
+    Returns:
+        A formatted string describing the entity's neighborhood, or an error message if the entity is not found.
+    """
+    g = fetch_knowledge_graph()
+    entity_id = _find_entity_id_by_name(entity_name, g)
+    if not entity_id:
+        return f"Error: Entity '{entity_name}' not found."
+
+    entity = g['entities'][entity_id]
+    primary_name = entity['entity_names'][0]
+    synonyms = entity['entity_names'][1:]
+
+    # Build response string
+    response = f"Entity: {primary_name}\n"
+    if synonyms:
+        response += f"Synonyms: {', '.join(synonyms)}\n"
+
+    # Find relationships
+    outgoing_rels = []
+    incoming_rels = []
+    if 'relationships' in g:
+        for rel in g['relationships']:
+            if rel['source_entity_id'] == entity_id:
+                target_entity_id = rel['target_entity_id']
+                target_entity_name = g['entities'].get(target_entity_id, {}).get('entity_names', ['Unknown Entity'])[0]
+                outgoing_rels.append(f"  - {primary_name} {rel['relationship']} {target_entity_name}")
+            elif rel['target_entity_id'] == entity_id:
+                source_entity_id = rel['source_entity_id']
+                source_entity_name = g['entities'].get(source_entity_id, {}).get('entity_names', ['Unknown Entity'])[0]
+                incoming_rels.append(f"  - {source_entity_name} {rel['relationship']} {primary_name}")
+
+    if outgoing_rels:
+        response += "Outgoing Relationships:\n" + "\n".join(outgoing_rels) + "\n"
+
+    if incoming_rels:
+        response += "Incoming Relationships:\n" + "\n".join(incoming_rels) + "\n"
+
+    if not outgoing_rels and not incoming_rels:
+        response += "No relationships found for this entity."
+
+    return response.strip()
