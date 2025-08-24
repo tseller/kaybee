@@ -22,7 +22,6 @@ storage_client = storage.Client()
 KNOWLEDGE_GRAPH_BUCKET = storage_client.get_bucket(
         os.environ["KNOWLEDGE_GRAPH_BUCKET"])
 
-@flog
 def fetch_knowledge_graph() -> dict:
     """Fetches the knowledge graph from the Google Cloud Storage bucket.
 
