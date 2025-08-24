@@ -22,7 +22,6 @@ storage_client = storage.Client()
 KNOWLEDGE_GRAPH_BUCKET = storage_client.get_bucket(
         os.environ["KNOWLEDGE_GRAPH_BUCKET"])
 
-@flog
 def fetch_knowledge_graph() -> dict:
     """Fetches the knowledge graph from the Google Cloud Storage bucket.
 
@@ -142,20 +141,19 @@ def add_entity(entity_names: list[str]) -> str:
 
 
 @flog
-def add_synonyms(entity_name: str, synonyms: list[str]) -> str:
+def add_synonyms(entity_id: str, synonyms: list[str]) -> str:
     """Adds synonyms to an existing entity.
 
     Args:
-        entity_name: The name of the entity to add synonyms to.
+        entity_id: The ID of the entity to add synonyms to.
         synonyms: A list of synonyms to add.
 
     Returns:
         A message indicating success or failure.
     """
     g = fetch_knowledge_graph()
-    entity_id = _find_entity_id_by_name(entity_name, g)
-    if not entity_id:
-        return f"Error: Entity '{entity_name}' not found."
+    if entity_id not in g['entities']:
+        return f"Error: Entity with ID '{entity_id}' not found."
 
     for s in synonyms:
         if _find_entity_id_by_name(s, g):
@@ -168,27 +166,28 @@ def add_synonyms(entity_name: str, synonyms: list[str]) -> str:
             entity['entity_names'].append(synonym)
 
     store_knowledge_graph(g)
-    return f"Synonyms added successfully to entity '{entity_name}'."
+    primary_name = g['entities'][entity_id]['entity_names'][0]
+    return f"Synonyms added successfully to entity '{primary_name}'."
 
 
 @flog
-def remove_synonyms(entity_name: str, synonyms: list[str]) -> str:
+def remove_synonyms(entity_id: str, synonyms: list[str]) -> str:
     """Removes synonyms from an entity.
 
     Args:
-        entity_name: The name of the entity to remove synonyms from.
+        entity_id: The ID of the entity to remove synonyms from.
         synonyms: The list of synonyms to remove.
 
     Returns:
         A message indicating success or failure.
     """
     g = fetch_knowledge_graph()
-    entity_id = _find_entity_id_by_name(entity_name, g)
-    if not entity_id:
-        return f"Error: Entity '{entity_name}' not found."
+    if entity_id not in g['entities']:
+        return f"Error: Entity with ID '{entity_id}' not found."
 
     entity = g['entities'][entity_id]
     original_names = entity['entity_names']
+    primary_name = original_names[0]
 
     # Create a lowercase version of synonyms for case-insensitive comparison
     lower_synonyms_to_remove = {s.lower() for s in synonyms}
@@ -196,109 +195,101 @@ def remove_synonyms(entity_name: str, synonyms: list[str]) -> str:
     new_names = [name for name in original_names if name.lower() not in lower_synonyms_to_remove]
 
     if not new_names:
-        return f"Error: Cannot remove all names from entity '{entity_name}'. An entity must have at least one name."
+        return f"Error: Cannot remove all names from entity '{primary_name}'. An entity must have at least one name."
 
     g['entities'][entity_id]['entity_names'] = new_names
     store_knowledge_graph(g)
-    return f"Synonyms removed successfully from entity '{entity_name}'."
+    return f"Synonyms removed successfully from entity '{primary_name}'."
 
 
 @flog
-def add_relationship(source_entity: str, relationship: str, target_entity: str) -> str:
+def add_relationship(source_entity_id: str, relationship: str, target_entity_id: str) -> str:
     """Adds a relationship between two entities.
 
     Args:
-        source_entity: The name of the source entity.
+        source_entity_id: The ID of the source entity.
         relationship: The description of the relationship.
-        target_entity: The name of the target entity.
+        target_entity_id: The ID of the target entity.
 
     Returns:
         A message indicating success or failure.
     """
     g = fetch_knowledge_graph()
-    source_id = _find_entity_id_by_name(source_entity, g)
-    if not source_id:
-        source_id = str(uuid.uuid4())
-        g['entities'][source_id] = {
-            'entity_id': source_id,
-            'entity_names': [source_entity]
-        }
+    if source_entity_id not in g['entities']:
+        return f"Error: Source entity with ID '{source_entity_id}' not found."
+    if target_entity_id not in g['entities']:
+        return f"Error: Target entity with ID '{target_entity_id}' not found."
 
-    target_id = _find_entity_id_by_name(target_entity, g)
-    if not target_id:
-        # If target entity doesn't exist, create it.
-        target_id = str(uuid.uuid4())
-        g['entities'][target_id] = {
-            'entity_id': target_id,
-            'entity_names': [target_entity]
-        }
+    source_primary_name = g['entities'][source_entity_id]['entity_names'][0]
+    target_primary_name = g['entities'][target_entity_id]['entity_names'][0]
 
     # Check if the relationship already exists
     for rel in g.get('relationships', []):
-        if (rel['source_entity_id'] == source_id and
-            rel['target_entity_id'] == target_id and
+        if (rel['source_entity_id'] == source_entity_id and
+            rel['target_entity_id'] == target_entity_id and
             rel['relationship'].lower() == relationship.lower()):
-            return f"Relationship '{source_entity} -> {relationship} -> {target_entity}' already exists."
+            return f"Relationship '{source_primary_name} -> {relationship} -> {target_primary_name}' already exists."
 
 
     g.setdefault('relationships', []).append({
-        'source_entity_id': source_id,
-        'target_entity_id': target_id,
+        'source_entity_id': source_entity_id,
+        'target_entity_id': target_entity_id,
         'relationship': relationship
     })
     store_knowledge_graph(g)
-    return f"Relationship '{source_entity} -> {relationship} -> {target_entity}' added successfully."
+    return f"Relationship '{source_primary_name} -> {relationship} -> {target_primary_name}' added successfully."
 
 @flog
-def remove_relationship(source_entity: str, relationship: str, target_entity: str) -> str:
+def remove_relationship(source_entity_id: str, relationship: str, target_entity_id: str) -> str:
     """Removes a relationship between two entities.
 
     Args:
-        source_entity: The name of the source entity.
+        source_entity_id: The ID of the source entity.
         relationship: The description of the relationship.
-        target_entity: The name of the target entity.
+        target_entity_id: The ID of the target entity.
 
     Returns:
         A message indicating success or failure.
     """
     g = fetch_knowledge_graph()
-    source_id = _find_entity_id_by_name(source_entity, g)
-    if not source_id:
-        return f"Error: Source entity '{source_entity}' not found."
+    if source_entity_id not in g['entities']:
+        return f"Error: Source entity with ID '{source_entity_id}' not found."
+    if target_entity_id not in g['entities']:
+        return f"Error: Target entity with ID '{target_entity_id}' not found."
 
-    target_id = _find_entity_id_by_name(target_entity, g)
-    if not target_id:
-        return f"Error: Target entity '{target_entity}' not found."
+    source_primary_name = g['entities'][source_entity_id]['entity_names'][0]
+    target_primary_name = g['entities'][target_entity_id]['entity_names'][0]
 
     initial_rel_count = len(g.get('relationships', []))
     g['relationships'] = [
         rel for rel in g.get('relationships', [])
-        if not (rel['source_entity_id'] == source_id and
-                rel['target_entity_id'] == target_id and
+        if not (rel['source_entity_id'] == source_entity_id and
+                rel['target_entity_id'] == target_entity_id and
                 rel['relationship'].lower() == relationship.lower())
     ]
 
     if len(g.get('relationships', [])) == initial_rel_count:
-        return f"Error: Relationship '{source_entity} -> {relationship} -> {target_entity}' not found."
+        return f"Error: Relationship '{source_primary_name} -> {relationship} -> {target_primary_name}' not found."
 
     store_knowledge_graph(g)
-    return f"Relationship '{source_entity} -> {relationship} -> {target_entity}' removed successfully."
+    return f"Relationship '{source_primary_name} -> {relationship} -> {target_primary_name}' removed successfully."
 
 
 @flog
-def delete_entity(entity_name: str) -> str:
+def delete_entity(entity_id: str) -> str:
     """Deletes an entity and all its relationships from the knowledge graph.
 
     Args:
-        entity_name: The name of the entity to delete.
+        entity_id: The ID of the entity to delete.
 
     Returns:
         A message indicating success or failure.
     """
     g = fetch_knowledge_graph()
-    entity_id = _find_entity_id_by_name(entity_name, g)
-    if not entity_id:
-        return f"Error: Entity '{entity_name}' not found."
+    if entity_id not in g['entities']:
+        return f"Error: Entity with ID '{entity_id}' not found."
+
+    primary_name = g['entities'][entity_id]['entity_names'][0]
 
     # Delete the entity
     del g['entities'][entity_id]
@@ -311,72 +302,51 @@ def delete_entity(entity_name: str) -> str:
         ]
 
     store_knowledge_graph(g)
-    return f"Entity '{entity_name}' and its relationships deleted successfully."
+    return f"Entity '{primary_name}' and its relationships deleted successfully."
 
 
 @flog
-def get_entity_neighborhood(entity_name: str) -> str:
+def get_entity_neighborhood(entity_names: list[str]) -> str:
     """
-    Retrieves and formats the neighborhood of a given entity, including its synonyms and relationships.
+    Retrieves the neighborhood of given entities as a JSON subgraph.
 
     Args:
-        entity_name: The name of the entity to look up.
+        entity_names: A list of names of the entities to look up.
 
     Returns:
-        A formatted string describing the entity's neighborhood, or an error message if the entity is not found.
+        A JSON string representing the combined neighborhood of the entities as a subgraph.
+        If an entity is not found, it is simply omitted from the subgraph.
     """
     g = fetch_knowledge_graph()
-    entity_id = _find_entity_id_by_name(entity_name, g)
-    if not entity_id:
-        return f"Error: Entity '{entity_name}' not found."
 
-    entity = g['entities'][entity_id]
-    primary_name = entity['entity_names'][0]
-    synonyms = entity['entity_names'][1:]
+    subgraph = {
+        'entities': {},
+        'relationships': []
+    }
 
-    # Build response string
-    response = f"Entity: {primary_name}\n"
-    if synonyms:
-        response += f"Synonyms: {', '.join(synonyms)}\n"
+    entity_ids_to_process = set()
 
-    # Find relationships
-    outgoing_rels = []
-    incoming_rels = []
+    for entity_name in entity_names:
+        entity_id = _find_entity_id_by_name(entity_name, g)
+        if entity_id:
+            entity_ids_to_process.add(entity_id)
+            subgraph['entities'][entity_id] = g['entities'][entity_id]
+
+    if not entity_ids_to_process:
+        return json.dumps(subgraph, indent=2)
+
     if 'relationships' in g:
         for rel in g['relationships']:
-            if rel['source_entity_id'] == entity_id:
-                target_entity_id = rel['target_entity_id']
-                target_entity_name = g['entities'].get(target_entity_id, {}).get('entity_names', ['Unknown Entity'])[0]
-                outgoing_rels.append(f"  - {primary_name} {rel['relationship']} {target_entity_name}")
-            elif rel['target_entity_id'] == entity_id:
-                source_entity_id = rel['source_entity_id']
-                source_entity_name = g['entities'].get(source_entity_id, {}).get('entity_names', ['Unknown Entity'])[0]
-                incoming_rels.append(f"  - {source_entity_name} {rel['relationship']} {primary_name}")
+            if rel['source_entity_id'] in entity_ids_to_process or rel['target_entity_id'] in entity_ids_to_process:
+                subgraph['relationships'].append(rel)
 
-    if outgoing_rels:
-        response += "Outgoing Relationships:\n" + "\n".join(outgoing_rels) + "\n"
+                # Add neighbor entities to the subgraph
+                source_id = rel['source_entity_id']
+                target_id = rel['target_entity_id']
+                if source_id in g['entities'] and source_id not in subgraph['entities']:
+                    subgraph['entities'][source_id] = g['entities'][source_id]
+                if target_id in g['entities'] and target_id not in subgraph['entities']:
+                    subgraph['entities'][target_id] = g['entities'][target_id]
 
-    if incoming_rels:
-        response += "Incoming Relationships:\n" + "\n".join(incoming_rels) + "\n"
+    return json.dumps(subgraph, indent=2)
 
-    if not outgoing_rels and not incoming_rels:
-        response += "No relationships found for this entity."
-
-    return response.strip()
-
-@flog
-def get_entity_id(entity_name: str) -> str:
-    """
-    Retrieves the ID of a given entity.
-
-    Args:
-        entity_name: The name of the entity to look up.
-
-    Returns:
-        The entity ID, or an error message if the entity is not found.
-    """
-    g = fetch_knowledge_graph()
-    entity_id = _find_entity_id_by_name(entity_name, g)
-    if not entity_id:
-        return f"Error: Entity '{entity_name}' not found."
-    return entity_id

@@ -10,7 +10,6 @@ from .tools import (
     remove_relationship,
     delete_entity,
     get_entity_neighborhood,
-    get_entity_id,
 )
 
 KNOWLEDGE_GRAPH_AGENT_PROMPT = """
@@ -20,19 +19,18 @@ and then to use the available tools to make the requested changes.
 
 You must follow this workflow:
 1.  **Examine the Request:** Understand the user's intent. What entities are they talking about? What relationships?
-2.  **Research the Graph:** Before making any changes, you MUST use the `get_entity_neighborhood` or `get_entity_id` tools to see what's already in the knowledge base. This is critical to avoid creating duplicate entities or relationships.
-3.  **Form a Plan:** Based on your research, decide which of the granular tools to call. For example, if the user says "A is also known as B", and your research shows that "A" already exists, you should plan to call `add_synonyms`, not `add_entity`.
+2.  **Research the Graph:** Before making any changes, you MUST use the `get_entity_neighborhood` tool to see what's already in the knowledge base. This is critical to avoid creating duplicate entities or relationships. The `get_entity_neighborhood` tool will return a JSON subgraph containing the entity and its immediate neighbors.
+3.  **Form a Plan:** Based on your research, decide which of the granular tools to call. For example, if the user says "A is also known as B", and your research shows that "A" already exists, you should plan to call `add_synonyms`, not `add_entity`. You will need to use the entity IDs from the returned subgraph in subsequent calls.
 4.  **Execute the Plan:** Call the necessary tools to modify the graph.
 
 Here are the tools you have available:
-- `get_entity_id(entity_name: str)`: Gets the unique ID of an entity.
-- `get_entity_neighborhood(entity_name: str)`: Shows the synonyms and relationships for an entity.
+- `get_entity_neighborhood(entity_names: list[str])`: Returns a JSON subgraph of the entities' neighborhood, in the format `{'entities': {...}, 'relationships': [...]}`.
 - `add_entity(entity_names: list[str])`: Adds a new entity. Fails if an entity with one of the names already exists.
-- `add_synonyms(entity_name: str, synonyms: list[str])`: Adds synonyms to an existing entity.
-- `remove_synonyms(entity_name: str, synonyms: list[str])`: Removes synonyms from an entity.
-- `add_relationship(source_entity: str, relationship: str, target_entity: str)`: Adds a relationship between two entities.
-- `remove_relationship(source_entity: str, relationship: str, target_entity: str)`: Removes a relationship.
-- `delete_entity(entity_name: str)`: Deletes an entity.
+- `add_synonyms(entity_id: str, synonyms: list[str])`: Adds synonyms to an existing entity.
+- `remove_synonyms(entity_id: str, synonyms: list[str])`: Removes synonyms from an entity.
+- `add_relationship(source_entity_id: str, relationship: str, target_entity_id: str)`: Adds a relationship between two entities.
+- `remove_relationship(source_entity_id: str, relationship: str, target_entity_id: str)`: Removes a relationship.
+- `delete_entity(entity_id: str)`: Deletes an entity.
 
 Always research before you act. Be deliberate and precise.
 """
@@ -48,7 +46,6 @@ agent = Agent(
     ),
     instruction=KNOWLEDGE_GRAPH_AGENT_PROMPT,
     tools=[
-        get_entity_id,
         get_entity_neighborhood,
         add_entity,
         add_synonyms,

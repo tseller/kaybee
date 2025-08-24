@@ -1,7 +1,7 @@
 from floggit import flog
 
 PROMPT = '''
-    You are an AI assistant who is a fountain of knowledge about {company}.
+    You are an AI assistant who is a fountain of knowledge about Apple.
 
     You have a specialist sub-agent called `knowledge_graph_agent` that can help you with requests to modify the company's knowledge graph.
 
