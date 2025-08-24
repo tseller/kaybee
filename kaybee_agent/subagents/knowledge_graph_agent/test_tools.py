@@ -81,10 +81,12 @@ class TestKnowledgeGraphTools(unittest.TestCase):
         mock_fetch.return_value = self.mock_graph
         result_str = get_entity_neighborhood('Apple')
         result = json.loads(result_str)
-        self.assertEqual(result['entity_id'], '123')
-        self.assertIn('Entity: Apple', result['neighborhood'])
-        self.assertIn('Synonyms: AAPL', result['neighborhood'])
-        self.assertIn('Outgoing Relationships:', result['neighborhood'])
+        self.assertIn('entities', result)
+        self.assertIn('relationships', result)
+        self.assertIn('123', result['entities'])
+        self.assertIn('456', result['entities'])
+        self.assertEqual(len(result['relationships']), 1)
+        self.assertEqual(result['relationships'][0]['source_entity_id'], '123')
 
     @patch('kaybee_agent.subagents.knowledge_graph_agent.tools.fetch_knowledge_graph')
     def test_get_entity_neighborhood_not_found(self, mock_fetch):

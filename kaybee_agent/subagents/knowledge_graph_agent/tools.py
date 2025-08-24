@@ -309,13 +309,13 @@ def delete_entity(entity_id: str) -> str:
 @flog
 def get_entity_neighborhood(entity_name: str) -> str:
     """
-    Retrieves and formats the neighborhood of a given entity, including its synonyms and relationships.
+    Retrieves the neighborhood of a given entity as a JSON subgraph.
 
     Args:
         entity_name: The name of the entity to look up.
 
     Returns:
-        A JSON string containing the entity ID and a formatted string describing the entity's neighborhood,
+        A JSON string representing the entity's neighborhood as a subgraph,
         or an error message if the entity is not found.
     """
     g = fetch_knowledge_graph()
@@ -323,43 +323,25 @@ def get_entity_neighborhood(entity_name: str) -> str:
     if not entity_id:
         return f"Error: Entity '{entity_name}' not found."
 
-    entity = g['entities'][entity_id]
-    primary_name = entity['entity_names'][0]
-    synonyms = entity['entity_names'][1:]
+    subgraph = {
+        'entities': {entity_id: g['entities'][entity_id]},
+        'relationships': []
+    }
 
-    # Build response string
-    response = f"Entity: {primary_name}\n"
-    if synonyms:
-        response += f"Synonyms: {', '.join(synonyms)}\n"
-
-    # Find relationships
-    outgoing_rels = []
-    incoming_rels = []
     if 'relationships' in g:
         for rel in g['relationships']:
             if rel['source_entity_id'] == entity_id:
+                subgraph['relationships'].append(rel)
                 target_entity_id = rel['target_entity_id']
-                target_entity_name = g['entities'].get(target_entity_id, {}).get('entity_names', ['Unknown Entity'])[0]
-                outgoing_rels.append(f"  - {primary_name} {rel['relationship']} {target_entity_name}")
+                if target_entity_id in g['entities']:
+                    subgraph['entities'][target_entity_id] = g['entities'][target_entity_id]
             elif rel['target_entity_id'] == entity_id:
+                subgraph['relationships'].append(rel)
                 source_entity_id = rel['source_entity_id']
-                source_entity_name = g['entities'].get(source_entity_id, {}).get('entity_names', ['Unknown Entity'])[0]
-                incoming_rels.append(f"  - {source_entity_name} {rel['relationship']} {primary_name}")
+                if source_entity_id in g['entities']:
+                    subgraph['entities'][source_entity_id] = g['entities'][source_entity_id]
 
-    if outgoing_rels:
-        response += "Outgoing Relationships:\n" + "\n".join(outgoing_rels) + "\n"
-
-    if incoming_rels:
-        response += "Incoming Relationships:\n" + "\n".join(incoming_rels) + "\n"
-
-    if not outgoing_rels and not incoming_rels:
-        response += "No relationships found for this entity."
-
-    result = {
-        'entity_id': entity_id,
-        'neighborhood': response.strip()
-    }
-    return json.dumps(result)
+    return json.dumps(subgraph, indent=2)
 
 @flog
 def get_entity_id(entity_name: str) -> str:
