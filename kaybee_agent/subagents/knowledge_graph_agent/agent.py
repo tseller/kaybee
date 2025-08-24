@@ -10,7 +10,6 @@ from .tools import (
     remove_relationship,
     delete_entity,
     get_entity_neighborhood,
-    get_entity_id,
 )
 
 KNOWLEDGE_GRAPH_AGENT_PROMPT = """
@@ -25,7 +24,6 @@ You must follow this workflow:
 4.  **Execute the Plan:** Call the necessary tools to modify the graph.
 
 Here are the tools you have available:
-- `get_entity_id(entity_name: str)`: Gets the unique ID of an entity.
 - `get_entity_neighborhood(entity_name: str)`: Returns a JSON subgraph of the entity's neighborhood, in the format `{'entities': {...}, 'relationships': [...]}`.
 - `add_entity(entity_names: list[str])`: Adds a new entity. Fails if an entity with one of the names already exists.
 - `add_synonyms(entity_id: str, synonyms: list[str])`: Adds synonyms to an existing entity.
@@ -48,7 +46,6 @@ agent = Agent(
     ),
     instruction=KNOWLEDGE_GRAPH_AGENT_PROMPT,
     tools=[
-        get_entity_id,
         get_entity_neighborhood,
         add_entity,
         add_synonyms,

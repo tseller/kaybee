@@ -343,19 +343,3 @@ def get_entity_neighborhood(entity_name: str) -> str:
 
     return json.dumps(subgraph, indent=2)
 
-@flog
-def get_entity_id(entity_name: str) -> str:
-    """
-    Retrieves the ID of a given entity.
-
-    Args:
-        entity_name: The name of the entity to look up.
-
-    Returns:
-        The entity ID, or an error message if the entity is not found.
-    """
-    g = fetch_knowledge_graph()
-    entity_id = _find_entity_id_by_name(entity_name, g)
-    if not entity_id:
-        return f"Error: Entity '{entity_name}' not found."
-    return entity_id
