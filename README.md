@@ -1,5 +1,8 @@
 # Simple ADK Agent on Cloud Run
 
+## Play with it live
+https://www.kaybee.ai/
+
 ## Run locally
 ```bash
 uv run uvicorn server:app
