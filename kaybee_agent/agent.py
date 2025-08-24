@@ -50,7 +50,7 @@ root_agent = Agent(
         )
     ),
     instruction=get_prompt(),
-    tools=[
+    sub_agents=[
         knowledge_graph_agent,
     ],
     before_agent_callback=process_user_input,
