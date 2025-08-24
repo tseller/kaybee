@@ -307,39 +307,47 @@ def delete_entity(entity_id: str) -> str:
 
 
 @flog
-def get_entity_neighborhood(entity_name: str) -> str:
+def get_entity_neighborhood(entity_names: list[str]) -> str:
     """
-    Retrieves the neighborhood of a given entity as a JSON subgraph.
+    Retrieves the neighborhood of given entities as a JSON subgraph.
 
     Args:
-        entity_name: The name of the entity to look up.
+        entity_names: A list of names of the entities to look up.
 
     Returns:
-        A JSON string representing the entity's neighborhood as a subgraph,
-        or an error message if the entity is not found.
+        A JSON string representing the combined neighborhood of the entities as a subgraph.
+        If an entity is not found, it is simply omitted from the subgraph.
     """
     g = fetch_knowledge_graph()
-    entity_id = _find_entity_id_by_name(entity_name, g)
-    if not entity_id:
-        return f"Error: Entity '{entity_name}' not found."
 
     subgraph = {
-        'entities': {entity_id: g['entities'][entity_id]},
+        'entities': {},
         'relationships': []
     }
 
+    entity_ids_to_process = set()
+
+    for entity_name in entity_names:
+        entity_id = _find_entity_id_by_name(entity_name, g)
+        if entity_id:
+            entity_ids_to_process.add(entity_id)
+            subgraph['entities'][entity_id] = g['entities'][entity_id]
+
+    if not entity_ids_to_process:
+        return json.dumps(subgraph, indent=2)
+
     if 'relationships' in g:
         for rel in g['relationships']:
-            if rel['source_entity_id'] == entity_id:
+            if rel['source_entity_id'] in entity_ids_to_process or rel['target_entity_id'] in entity_ids_to_process:
                 subgraph['relationships'].append(rel)
-                target_entity_id = rel['target_entity_id']
-                if target_entity_id in g['entities']:
-                    subgraph['entities'][target_entity_id] = g['entities'][target_entity_id]
-            elif rel['target_entity_id'] == entity_id:
-                subgraph['relationships'].append(rel)
-                source_entity_id = rel['source_entity_id']
-                if source_entity_id in g['entities']:
-                    subgraph['entities'][source_entity_id] = g['entities'][source_entity_id]
+
+                # Add neighbor entities to the subgraph
+                source_id = rel['source_entity_id']
+                target_id = rel['target_entity_id']
+                if source_id in g['entities'] and source_id not in subgraph['entities']:
+                    subgraph['entities'][source_id] = g['entities'][source_id]
+                if target_id in g['entities'] and target_id not in subgraph['entities']:
+                    subgraph['entities'][target_id] = g['entities'][target_id]
 
     return json.dumps(subgraph, indent=2)
 
