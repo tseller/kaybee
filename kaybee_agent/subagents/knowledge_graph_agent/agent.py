@@ -2,7 +2,7 @@ from google.adk.agents import Agent
 from google.adk.planners import BuiltInPlanner
 from google.genai import types
 
-from .knowledge_graph_tool import (
+from .tools import (
     add_entity,
     add_synonyms,
     remove_synonyms,
@@ -37,7 +37,7 @@ Here are the tools you have available:
 Always research before you act. Be deliberate and precise.
 """
 
-knowledge_graph_agent = Agent(
+agent = Agent(
     name="knowledge_graph_agent",
     model="gemini-2.5-flash",
     planner=BuiltInPlanner(

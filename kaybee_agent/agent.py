@@ -9,11 +9,10 @@ from google.adk.agents.callback_context import CallbackContext
 from google.adk.planners import BuiltInPlanner
 from google.genai import types
 from google.cloud import logging as google_cloud_logging
-from google.cloud import storage
 from typing import Optional
 
-from .knowledge_graph_tool import expand_query
-from .knowledge_graph_agent import knowledge_graph_agent
+from .subagents.knowledge_graph_agent.tools import expand_query
+from .subagents.knowledge_graph_agent import agent as knowledge_graph_agent
 from .prompt import get_prompt
 
 # Load environment variables from .env file in root directory
@@ -29,10 +28,6 @@ os.environ.setdefault("GOOGLE_GENAI_USE_VERTEXAI", "True")
 
 logging_client = google_cloud_logging.Client()
 logger = logging_client.logger("kaybee-agent")
-storage_client = storage.Client()
-
-KNOWLEDGE_GRAPH_BUCKET = storage_client.get_bucket(
-        os.environ["KNOWLEDGE_GRAPH_BUCKET"])
 
 def process_user_input(
         callback_context: CallbackContext) -> Optional[types.Content]:
