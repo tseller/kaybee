@@ -29,6 +29,7 @@ os.environ.setdefault("GOOGLE_GENAI_USE_VERTEXAI", "True")
 logging_client = google_cloud_logging.Client()
 logger = logging_client.logger("kaybee-agent")
 
+from google.adk.tools.mcp_tool.mcp_toolset import MCPToolset, StdioConnectionParams, StdioServerParameters
 def process_user_input(
         callback_context: CallbackContext) -> Optional[types.Content]:
     if text := callback_context.user_content.parts[-1].text:
@@ -36,17 +37,28 @@ def process_user_input(
             callback_context.user_content.parts.append(kb_context)
 
 root_agent = Agent(
-    name="knowledge_base_agent",
-    model="gemini-2.5-flash",
-    planner=BuiltInPlanner(
-        thinking_config=types.ThinkingConfig(
-            include_thoughts=True,
-            thinking_budget=1024,
+    model='gemini-2.0-flash',
+    name='filesystem_assistant_agent',
+    instruction='Help the user manage their files. You can list files, read files, etc.',
+    tools=[
+        MCPToolset(
+            connection_params=StdioConnectionParams(
+                server_params = StdioServerParameters(
+                    command='npx',
+                    args=[
+                        "-y",  # Argument for npx to auto-confirm install
+                        "@modelcontextprotocol/server-filesystem",
+                        # IMPORTANT: This MUST be an ABSOLUTE path to a folder the
+                        # npx process can access.
+                        # Replace with a valid absolute path on your system.
+                        # For example: "/Users/youruser/accessible_mcp_files"
+                        # or use a dynamically constructed absolute path:
+                        os.path.abspath('/'),
+                    ],
+                ),
+            ),
+            # Optional: Filter which tools from the MCP server are exposed
+            # tool_filter=['list_directory', 'read_file']
         )
-    ),
-    instruction=get_prompt(),
-    sub_agents=[
-        knowledge_graph_agent,
     ],
-    before_agent_callback=process_user_input,
 )
