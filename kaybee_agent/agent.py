@@ -36,7 +36,7 @@ def process_user_input(
             callback_context.user_content.parts.append(kb_context)
 
 root_agent = LlmAgent(
-    model="gemini-1.5-flash",
+    model="gemini-2.5-flash",
     name='filesystem_assistant_agent',
     instruction='Help the user manage their files. You can list files, read files, etc.',
     tools=[
@@ -57,6 +57,16 @@ root_agent = LlmAgent(
             ),
             # Optional: Filter which tools from the MCP server are exposed
             # tool_filter=['list_directory', 'read_file']
+        ),
+        MCPToolset(
+            connection_params=StdioConnectionParams(
+                server_params=StdioServerParameters(
+                    command='node',
+                    args=['/home/tseller/markdownify-mcp/dist/index.js'],
+                    env={'UV_PATH': '/home/tseller/.local/bin/uv'}
+                ),
+                timeout=30, # Setting a generous timeout
+            )
         )
     ],
 )
