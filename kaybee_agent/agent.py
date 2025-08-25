@@ -53,6 +53,7 @@ root_agent = LlmAgent(
                         str((Path(__file__).parent / "mcp_files").resolve()),
                     ],
                 ),
+                timeout=30,
             ),
             # Optional: Filter which tools from the MCP server are exposed
             # tool_filter=['list_directory', 'read_file']
