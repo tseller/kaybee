@@ -4,9 +4,8 @@ from pathlib import Path
 
 import google.auth
 from dotenv import load_dotenv
-from google.adk.agents import Agent
+from google.adk.agents import LlmAgent
 from google.adk.agents.callback_context import CallbackContext
-from google.adk.planners import BuiltInPlanner
 from google.genai import types
 from google.cloud import logging as google_cloud_logging
 from typing import Optional
@@ -36,8 +35,8 @@ def process_user_input(
         if kb_context := expand_query(text):
             callback_context.user_content.parts.append(kb_context)
 
-root_agent = Agent(
-    model='gemini-2.0-flash',
+root_agent = LlmAgent(
+    model="gemini-1.5-flash",
     name='filesystem_assistant_agent',
     instruction='Help the user manage their files. You can list files, read files, etc.',
     tools=[
@@ -50,10 +49,8 @@ root_agent = Agent(
                         "@modelcontextprotocol/server-filesystem",
                         # IMPORTANT: This MUST be an ABSOLUTE path to a folder the
                         # npx process can access.
-                        # Replace with a valid absolute path on your system.
-                        # For example: "/Users/youruser/accessible_mcp_files"
-                        # or use a dynamically constructed absolute path:
-                        os.path.abspath('/'),
+                        # Use a safe, dedicated folder instead of root.
+                        str((Path(__file__).parent / "mcp_files").resolve()),
                     ],
                 ),
             ),
