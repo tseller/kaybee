@@ -88,6 +88,10 @@ def upsert_entities(entities: list[Entity], tool_context: ToolContext) -> str:
     - If an entity has an ID, it will be updated.
     - If an entity does not have an ID, it will be created.
     """
+    # The ADK passes a list of dicts, not Pydantic objects. We convert them here.
+    if entities and isinstance(entities[0], dict):
+        entities = [Entity.model_validate(e) for e in entities]
+
     graph_id = tool_context._invocation_context.user_id
     g = _fetch_knowledge_graph(graph_id=graph_id)
 
@@ -194,6 +198,10 @@ def remove_relationships(
     relationships: list[RelationshipIdentifier], tool_context: ToolContext
 ) -> str:
     """Removes specified relationships from the knowledge graph."""
+    # The ADK passes a list of dicts, not Pydantic objects. We convert them here.
+    if relationships and isinstance(relationships[0], dict):
+        relationships = [RelationshipIdentifier.model_validate(r) for r in relationships]
+
     graph_id = tool_context._invocation_context.user_id
     g = _fetch_knowledge_graph(graph_id=graph_id)
 
