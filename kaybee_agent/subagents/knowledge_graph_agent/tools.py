@@ -99,7 +99,7 @@ def upsert_entities(entities: list[Entity], tool_context: ToolContext) -> str:
     }
 
     for entity_data in entities:
-        if entity_data.entity_id:
+        if hasattr(entity_data, "entity_id") and entity_data.entity_id:
             # This is an update to an existing entity
             entity_id = entity_data.entity_id
             if entity_id not in g['entities']:
