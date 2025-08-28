@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 from typing import Optional
 from thefuzz import fuzz
 
+from google.adk.tools import ToolContext
 from google.genai import types
 from google.cloud import storage
 
@@ -22,13 +23,13 @@ storage_client = storage.Client()
 KNOWLEDGE_GRAPH_BUCKET = storage_client.get_bucket(
         os.environ["KNOWLEDGE_GRAPH_BUCKET"])
 
-def fetch_knowledge_graph() -> dict:
+def _fetch_knowledge_graph(graph_id: str) -> dict:
     """Fetches the knowledge graph from the Google Cloud Storage bucket.
 
     Returns:
         dict: The knowledge graph as a dictionary.
     """
-    blob = KNOWLEDGE_GRAPH_BUCKET.blob("knowledge_graph.json")
+    blob = KNOWLEDGE_GRAPH_BUCKET.blob(f"{graph_id}.json")
     if not blob.exists():
         return {'entities': {}, 'relationships': []}
     else:
@@ -37,21 +38,21 @@ def fetch_knowledge_graph() -> dict:
 
 
 @flog
-def store_knowledge_graph(knowledge_graph: dict) -> None:
+def _store_knowledge_graph(knowledge_graph: dict, graph_id: str) -> None:
     """Stores the knowledge graph in the Google Cloud Storage bucket.
 
     Args:
         knowledge_graph (dict): The knowledge graph to be stored.
     """
-    blob = KNOWLEDGE_GRAPH_BUCKET.blob("knowledge_graph.json")
+    blob = KNOWLEDGE_GRAPH_BUCKET.blob(f"{graph_id}.json")
     blob.upload_from_string(json.dumps(knowledge_graph, indent=2), content_type='application/json')
 
 
 @flog
-def expand_query(query: str) -> Optional[types.Part]:
+def expand_query(query: str, graph_id: str) -> Optional[types.Part]:
     """Expands a query by fetching related entities from the knowledge graph and appending them to the query."""
 
-    g = fetch_knowledge_graph()
+    g = _fetch_knowledge_graph(graph_id=graph_id)
 
     # Find entities related to the query
     relevant_entities = {}
@@ -64,7 +65,7 @@ def expand_query(query: str) -> Optional[types.Part]:
     )
 
     relationships = []
-    mdg = knowledge_graph_to_nx(g)
+    mdg = _knowledge_graph_to_nx(g)
     for e1, e2, edge_labels in mdg.out_edges(list(relevant_entities.keys()), data=True):
         relationships.append(
             (
@@ -84,7 +85,7 @@ def expand_query(query: str) -> Optional[types.Part]:
         )
 
 
-def knowledge_graph_to_nx(g: dict) -> 'nx.MultiDiGraph':
+def _knowledge_graph_to_nx(g: dict) -> 'nx.MultiDiGraph':
     """Converts the knowledge graph dictionary to a NetworkX MultiDiGraph."""
     mdg = nx.MultiDiGraph()
     mdg.add_nodes_from((k, v) for k, v in g['entities'].items())
@@ -113,7 +114,7 @@ def _find_entity_id_by_name(entity_name: str, g: dict, threshold: int = 80) -> O
         return None
 
 @flog
-def add_entity(entity_names: list[str]) -> str:
+def add_entity(entity_names: list[str], tool_context: ToolContext) -> str:
     """Adds a new entity to the knowledge graph.
 
     Args:
@@ -125,7 +126,8 @@ def add_entity(entity_names: list[str]) -> str:
     if not entity_names:
         return "Error: At least one name must be provided for the entity."
 
-    g = fetch_knowledge_graph()
+    graph_id = tool_context._invocation_context.user_id
+    g = _fetch_knowledge_graph(graph_id=graph_id)
 
     for name in entity_names:
         if _find_entity_id_by_name(name, g):
@@ -136,12 +138,12 @@ def add_entity(entity_names: list[str]) -> str:
         'entity_id': new_entity_id,
         'entity_names': entity_names
     }
-    store_knowledge_graph(g)
+    _store_knowledge_graph(knowledge_graph=g, graph_id=graph_id)
     return f"Entity '{entity_names[0]}' added successfully."
 
 
 @flog
-def add_synonyms(entity_id: str, synonyms: list[str]) -> str:
+def add_synonyms(entity_id: str, synonyms: list[str], tool_context: ToolContext) -> str:
     """Adds synonyms to an existing entity.
 
     Args:
@@ -151,7 +153,9 @@ def add_synonyms(entity_id: str, synonyms: list[str]) -> str:
     Returns:
         A message indicating success or failure.
     """
-    g = fetch_knowledge_graph()
+    graph_id = tool_context._invocation_context.user_id
+    g = _fetch_knowledge_graph(graph_id=graph_id)
+
     if entity_id not in g['entities']:
         return f"Error: Entity with ID '{entity_id}' not found."
 
@@ -165,13 +169,14 @@ def add_synonyms(entity_id: str, synonyms: list[str]) -> str:
         if synonym.lower() not in existing_synonyms:
             entity['entity_names'].append(synonym)
 
-    store_knowledge_graph(g)
+    _store_knowledge_graph(knowledge_graph=g, graph_id=graph_id)
+
     primary_name = g['entities'][entity_id]['entity_names'][0]
     return f"Synonyms added successfully to entity '{primary_name}'."
 
 
 @flog
-def remove_synonyms(entity_id: str, synonyms: list[str]) -> str:
+def remove_synonyms(entity_id: str, synonyms: list[str], tool_context: ToolContext) -> str:
     """Removes synonyms from an entity.
 
     Args:
@@ -181,7 +186,9 @@ def remove_synonyms(entity_id: str, synonyms: list[str]) -> str:
     Returns:
         A message indicating success or failure.
     """
-    g = fetch_knowledge_graph()
+    graph_id = tool_context._invocation_context.user_id
+    g = _fetch_knowledge_graph(graph_id=graph_id)
+
     if entity_id not in g['entities']:
         return f"Error: Entity with ID '{entity_id}' not found."
 
@@ -198,12 +205,16 @@ def remove_synonyms(entity_id: str, synonyms: list[str]) -> str:
         return f"Error: Cannot remove all names from entity '{primary_name}'. An entity must have at least one name."
 
     g['entities'][entity_id]['entity_names'] = new_names
-    store_knowledge_graph(g)
+    _store_knowledge_graph(knowledge_graph=g, graph_id=graph_id)
     return f"Synonyms removed successfully from entity '{primary_name}'."
 
 
 @flog
-def add_relationship(source_entity_id: str, relationship: str, target_entity_id: str) -> str:
+def add_relationship(
+        source_entity_id: str,
+        relationship: str,
+        target_entity_id: str,
+        tool_context: ToolContext) -> str:
     """Adds a relationship between two entities.
 
     Args:
@@ -214,7 +225,9 @@ def add_relationship(source_entity_id: str, relationship: str, target_entity_id:
     Returns:
         A message indicating success or failure.
     """
-    g = fetch_knowledge_graph()
+    graph_id = tool_context._invocation_context.user_id
+    g = _fetch_knowledge_graph(graph_id=graph_id)
+
     if source_entity_id not in g['entities']:
         return f"Error: Source entity with ID '{source_entity_id}' not found."
     if target_entity_id not in g['entities']:
@@ -236,11 +249,15 @@ def add_relationship(source_entity_id: str, relationship: str, target_entity_id:
         'target_entity_id': target_entity_id,
         'relationship': relationship
     })
-    store_knowledge_graph(g)
+    _store_knowledge_graph(knowledge_graph=g, graph_id=graph_id)
     return f"Relationship '{source_primary_name} -> {relationship} -> {target_primary_name}' added successfully."
 
 @flog
-def remove_relationship(source_entity_id: str, relationship: str, target_entity_id: str) -> str:
+def remove_relationship(
+        source_entity_id: str,
+        relationship: str,
+        target_entity_id: str,
+        tool_context: ToolContext) -> str:
     """Removes a relationship between two entities.
 
     Args:
@@ -251,7 +268,9 @@ def remove_relationship(source_entity_id: str, relationship: str, target_entity_
     Returns:
         A message indicating success or failure.
     """
-    g = fetch_knowledge_graph()
+    graph_id = tool_context._invocation_context.user_id
+    g = _fetch_knowledge_graph(graph_id=graph_id)
+
     if source_entity_id not in g['entities']:
         return f"Error: Source entity with ID '{source_entity_id}' not found."
     if target_entity_id not in g['entities']:
@@ -271,12 +290,12 @@ def remove_relationship(source_entity_id: str, relationship: str, target_entity_
     if len(g.get('relationships', [])) == initial_rel_count:
         return f"Error: Relationship '{source_primary_name} -> {relationship} -> {target_primary_name}' not found."
 
-    store_knowledge_graph(g)
+    _store_knowledge_graph(knowledge_graph=g, graph_id=graph_id)
     return f"Relationship '{source_primary_name} -> {relationship} -> {target_primary_name}' removed successfully."
 
 
 @flog
-def delete_entity(entity_id: str) -> str:
+def delete_entity(entity_id: str, tool_context: ToolContext) -> str:
     """Deletes an entity and all its relationships from the knowledge graph.
 
     Args:
@@ -285,7 +304,9 @@ def delete_entity(entity_id: str) -> str:
     Returns:
         A message indicating success or failure.
     """
-    g = fetch_knowledge_graph()
+    graph_id = tool_context._invocation_context.user_id
+    g = _fetch_knowledge_graph(graph_id=graph_id)
+
     if entity_id not in g['entities']:
         return f"Error: Entity with ID '{entity_id}' not found."
 
@@ -301,12 +322,12 @@ def delete_entity(entity_id: str) -> str:
             if rel['source_entity_id'] != entity_id and rel['target_entity_id'] != entity_id
         ]
 
-    store_knowledge_graph(g)
+    _store_knowledge_graph(knowledge_graph=g, graph_id=graph_id)
     return f"Entity '{primary_name}' and its relationships deleted successfully."
 
 
 @flog
-def get_entity_neighborhood(entity_names: list[str]) -> str:
+def get_entity_neighborhood(entity_names: list[str], tool_context: ToolContext) -> str:
     """
     Retrieves the neighborhood of given entities as a JSON subgraph.
 
@@ -317,7 +338,8 @@ def get_entity_neighborhood(entity_names: list[str]) -> str:
         A JSON string representing the combined neighborhood of the entities as a subgraph.
         If an entity is not found, it is simply omitted from the subgraph.
     """
-    g = fetch_knowledge_graph()
+    graph_id = tool_context._invocation_context.user_id
+    g = _fetch_knowledge_graph(graph_id=graph_id)
 
     subgraph = {
         'entities': {},
@@ -349,4 +371,3 @@ def get_entity_neighborhood(entity_names: list[str]) -> str:
                     subgraph['entities'][target_id] = g['entities'][target_id]
 
     return json.dumps(subgraph, indent=2)
-

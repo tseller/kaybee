@@ -32,7 +32,8 @@ logger = logging_client.logger("kaybee-agent")
 def process_user_input(
         callback_context: CallbackContext) -> Optional[types.Content]:
     if text := callback_context.user_content.parts[-1].text:
-        if kb_context := expand_query(text):
+        graph_id = callback_context._invocation_context.user_id
+        if kb_context := expand_query(query=text, graph_id=graph_id):
             callback_context.user_content.parts.append(kb_context)
 
 root_agent = Agent(
