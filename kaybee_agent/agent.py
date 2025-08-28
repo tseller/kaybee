@@ -47,7 +47,9 @@ root_agent = Agent(
     ),
     instruction=get_prompt(),
     sub_agents=[
-        ParallelAgent(sub_agents=[knowledge_graph_agent]),
+        ParallelAgent(
+            name="knowledge_graph_agent",
+            sub_agents=[knowledge_graph_agent]),
     ],
     before_agent_callback=process_user_input,
 )
