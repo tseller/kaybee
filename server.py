@@ -28,6 +28,9 @@ from opentelemetry.sdk.trace import TracerProvider, export
 # Load environment variables from .env file
 load_dotenv()
 
+from kaybee_agent.agent import setup_environment
+setup_environment()
+
 logging_client = google_cloud_logging.Client()
 logger = logging_client.logger(__name__)
 

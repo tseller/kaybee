@@ -2,7 +2,6 @@ import json
 import os
 import networkx as nx
 from dotenv import load_dotenv
-from floggit import flog
 from typing import Optional
 
 from google.adk.tools import ToolContext
@@ -14,9 +13,8 @@ from kaybee_agent.schemas import Entity, RelationshipIdentifier
 
 load_dotenv()
 
-storage_client = storage.Client()
-
 def _get_bucket():
+    storage_client = storage.Client()
     bucket_name = os.environ.get("KNOWLEDGE_GRAPH_BUCKET")
     if not bucket_name:
         raise ValueError("KNOWLEDGE_GRAPH_BUCKET environment variable not set.")
@@ -70,7 +68,6 @@ def _find_entity_ids_by_name(
     ]
 
 
-@flog
 def get_relevant_neighborhoods(entity_names: list[str], tool_context: ToolContext) -> str:
     """
     Retrieves the neighborhoods of all potentially relevant existing entities and relationships.
@@ -101,7 +98,6 @@ def get_relevant_neighborhoods(entity_names: list[str], tool_context: ToolContex
         'relationships': j['links']
     }
 
-@flog
 def store_graph(graph: dict, tool_context: ToolContext) -> str:
     """
     Stores the provided graph in the knowledge graph store.
