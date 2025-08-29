@@ -2,8 +2,10 @@ from google.adk.agents import SequentialAgent
 from google.adk.planners import BuiltInPlanner
 from google.genai import types
 
-from .tools import store_graph
-from .sub_agents import local_graph_former, neighborhood_researcher, graph_merger, graph_storer
+from .subagents.local_graph_former_agent import local_graph_former_agent
+from .subagents.neighborhood_researcher_agent import neighborhood_researcher_agent
+from .subagents.graph_merger_agent import graph_merger_agent
+from .subagents.graph_storer_agent import graph_storer_agent
 
 KNOWLEDGE_GRAPH_AGENT_PROMPT = """
 You are a master agent responsible for maintaining a knowledge graph.
@@ -19,9 +21,9 @@ You will proceed in four steps:
 agent = SequentialAgent(
     name="knowledge_graph_agent",
     sub_agents=[
-        local_graph_former,
-        neighborhood_researcher,
-        graph_merger,
-        graph_storer,
+        local_graph_former_agent,
+        neighborhood_researcher_agent,
+        graph_merger_agent,
+        graph_storer_agent,
     ],
 )
