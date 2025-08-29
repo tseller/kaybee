@@ -54,24 +54,19 @@ def _knowledge_graph_to_nx(g: dict) -> "nx.MultiDiGraph":
     return mdg
 
 
-def _find_entity_id_by_name(
+def _find_entity_ids_by_name(
     entity_name: str, g: dict, threshold: int = 80
-) -> Optional[str]:
+) -> list[str]:
     """Finds an entity by its name or one of its synonyms using fuzzy string matching."""
     best_match_score = 0
     best_match_id = None
 
-    for entity_id, entity_data in g["entities"].items():
-        for name in entity_data["entity_names"]:
-            score = fuzz.ratio(entity_name.lower(), name.lower())
-            if score > best_match_score:
-                best_match_score = score
-                best_match_id = entity_id
-
-    if best_match_score >= threshold:
-        return best_match_id
-    else:
-        return None
+    return [
+        entity_id
+        for entity_id, entity_data in g["entities"].items()
+        for name in entity_data["entity_names"]
+        if fuzz.ratio(entity_name.lower(), name.lower()) > threshold
+    ]
 
 def _find_entity_id_by_name_exact(entity_name: str, g: dict) -> Optional[str]:
     """Finds an entity by its name or one of its synonyms using exact string matching."""
@@ -229,37 +224,33 @@ def remove_relationships(
 @flog
 def get_relevant_neighborhoods(entity_names: list[str], tool_context: ToolContext) -> str:
     """
-    Retrieves the neighborhoods of potentially relevant entities as a JSON subgraph, to provide context for what changes should be made.
+    Retrieves the neighborhoods of all potentially relevant existing entities and relationships.
     """
     graph_id = tool_context._invocation_context.user_id
     g = _fetch_knowledge_graph(graph_id=graph_id)
-    subgraph = {"entities": {}, "relationships": []}
-    entity_ids_to_process = set()
 
-    for entity_name in entity_names:
-        entity_id = _find_entity_id_by_name(entity_name, g)
-        if entity_id:
-            entity_ids_to_process.add(entity_id)
-            subgraph["entities"][entity_id] = g["entities"][entity_id]
+    relevant_entity_ids = set().union(*[
+        _find_entity_ids_by_name(entity_name, g)
+        for entity_name in entity_names
+    ])
+    mdg = _knowledge_graph_to_nx(g)
 
-    if not entity_ids_to_process:
-        return json.dumps(subgraph, indent=2)
+    nbrs1 = {
+            nbr for entity_id in relevant_entity_ids
+            for nbr in mdg.to_undirected().neighbors(entity_id)
+    }
+    nbrs2 = {
+            nbr for entity_id in nbrs1
+            for nbr in mdg.to_undirected().neighbors(entity_id)
+    }
 
-    if "relationships" in g:
-        for rel in g["relationships"]:
-            if (
-                rel["source_entity_id"] in entity_ids_to_process
-                or rel["target_entity_id"] in entity_ids_to_process
-            ):
-                subgraph["relationships"].append(rel)
-                source_id = rel["source_entity_id"]
-                target_id = rel["target_entity_id"]
-                if source_id in g["entities"] and source_id not in subgraph["entities"]:
-                    subgraph["entities"][source_id] = g["entities"][source_id]
-                if target_id in g["entities"] and target_id not in subgraph["entities"]:
-                    subgraph["entities"][target_id] = g["entities"][target_id]
+    subgraph = mdg.subgraph(relevant_entity_ids|nbrs1|nbrs2)
+    j = nx.node_link_data(subgraph)
 
-    return json.dumps(subgraph, indent=2)
+    return {
+        'entities': j['nodes'],
+        'relationships': j['links']
+    }
 
 
 @flog
