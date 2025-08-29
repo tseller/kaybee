@@ -4,6 +4,10 @@ from typing import Optional, Any
 
 class Relationship(BaseModel):
     """A relationship between two entities."""
+    source_entity_name: str = Field(
+        ...,
+        description="The name of the source entity."
+    )
     target_entity_name: str = Field(
         ...,
         description="The name of the target entity."
@@ -38,3 +42,12 @@ class RelationshipIdentifier(BaseModel):
     source_entity_name: str = Field(..., description="The name of the source entity.")
     target_entity_name: str = Field(..., description="The name of the target entity.")
     relationship: str = Field(..., description="The description of the relationship.")
+
+class KnowledgeGraph(BaseModel):
+    """Represents a knowledge graph with entities and relationships."""
+    entities: list[Entity]
+    relationships: list[Relationship]
+
+class StoreResult(BaseModel):
+    """The result of storing a graph."""
+    message: str
