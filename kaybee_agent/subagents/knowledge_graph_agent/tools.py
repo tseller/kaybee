@@ -123,14 +123,6 @@ def upsert_entities(entities: list[Entity], tool_context: ToolContext) -> str:
             g["entities"][entity_id]["properties"].update(entity_data.properties)
 
         else:
-            # This is a new entity to be created
-            # Check for exact name conflict first.
-            primary_name = entity_data.entity_names[0]
-            if _find_entity_id_by_name_exact(primary_name, g):
-                # An entity with this name already exists.
-                # The agent should have known this. We will skip this one.
-                continue
-
             entity_id = str(uuid.uuid4())
             g["entities"][entity_id] = {
                 "entity_id": entity_id,
@@ -235,9 +227,9 @@ def remove_relationships(
 
 
 @flog
-def get_entity_neighborhood(entity_names: list[str], tool_context: ToolContext) -> str:
+def get_relevant_neighborhoods(entity_names: list[str], tool_context: ToolContext) -> str:
     """
-    Retrieves the neighborhood of given entities as a JSON subgraph.
+    Retrieves the neighborhoods of potentially relevant entities as a JSON subgraph, to provide context for what changes should be made.
     """
     graph_id = tool_context._invocation_context.user_id
     g = _fetch_knowledge_graph(graph_id=graph_id)

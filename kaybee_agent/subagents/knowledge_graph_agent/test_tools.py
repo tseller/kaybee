@@ -12,7 +12,7 @@ from kaybee_agent.subagents.knowledge_graph_agent.tools import (
     upsert_entities,
     remove_entities,
     remove_relationships,
-    get_entity_neighborhood,
+    get_relevant_neighborhoods,
 )
 
 
@@ -106,9 +106,9 @@ class TestNewKnowledgeGraphTools(unittest.TestCase):
         self.assertEqual(len(updated_graph['relationships']), 0)
 
     @patch('kaybee_agent.subagents.knowledge_graph_agent.tools._fetch_knowledge_graph')
-    def test_get_entity_neighborhood_found(self, mock_fetch):
+    def test_get_relevant_neighborhoods_found(self, mock_fetch):
         mock_fetch.return_value = self.mock_graph
-        result_str = get_entity_neighborhood(['Apple', 'Google'], self.mock_tool_context)
+        result_str = get_relevant_neighborhoods(['Apple', 'Google'], self.mock_tool_context)
         result = json.loads(result_str)
         self.assertIn('entities', result)
         self.assertIn('relationships', result)
