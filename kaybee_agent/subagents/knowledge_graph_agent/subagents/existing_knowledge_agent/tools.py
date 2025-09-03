@@ -5,11 +5,8 @@ from dotenv import load_dotenv
 from typing import Optional
 
 from google.adk.tools import ToolContext
-from google.genai import types
 from google.cloud import storage
 from thefuzz import fuzz
-
-from kaybee_agent.schemas import Entity, RelationshipIdentifier
 
 load_dotenv()
 
@@ -30,15 +27,6 @@ def _fetch_knowledge_graph(graph_id: str) -> dict:
     else:
         content = blob.download_as_text()
         return json.loads(content)
-
-
-def _store_knowledge_graph(knowledge_graph: dict, graph_id: str) -> None:
-    """Stores the knowledge graph in the Google Cloud Storage bucket."""
-    bucket = _get_bucket()
-    blob = bucket.blob(f"{graph_id}.json")
-    blob.upload_from_string(
-        json.dumps(knowledge_graph, indent=2), content_type="application/json"
-    )
 
 
 def _knowledge_graph_to_nx(g: dict) -> "nx.MultiDiGraph":
@@ -67,10 +55,13 @@ def _find_entity_ids_by_name(
         if fuzz.ratio(entity_name.lower(), name.lower()) > threshold
     ]
 
-
-def get_relevant_neighborhoods(entity_names: list[str], tool_context: ToolContext) -> str:
+def get_relevant_neighborhoods(entity_names: list[str], tool_context: ToolContext) -> dict:
     """
-    Retrieves the neighborhoods of all potentially relevant existing entities and relationships.
+    Args:
+        entity_names (list[str]): A list of entity names, and any synonyms.
+
+    Returns:
+        dict: A relevant portion of the knowledge graph.
     """
     graph_id = tool_context._invocation_context.user_id
     g = _fetch_knowledge_graph(graph_id=graph_id)
@@ -91,18 +82,19 @@ def get_relevant_neighborhoods(entity_names: list[str], tool_context: ToolContex
     }
 
     subgraph = mdg.subgraph(relevant_entity_ids|nbrs1|nbrs2)
-    j = nx.node_link_data(subgraph, edges="links")
+    subgraph_json = nx.node_link_data(subgraph, edges="links")
 
-    return {
-        'entities': j['nodes'],
-        'relationships': j['links']
+    neighborhoods = {
+        'entities': {node['entity_id']: node for node in subgraph_json['nodes']},
+        'relationships': [
+            {
+                'source_entity_id': link['source'],
+                'target_entity_id': link['target'],
+                'relationship': link['relationship']
+            } for link in subgraph_json['links']
+        ]
     }
 
-def store_graph(graph: dict, tool_context: ToolContext) -> str:
-    """
-    Stores the provided graph in the knowledge graph store.
-    This will overwrite the existing graph.
-    """
-    graph_id = tool_context._invocation_context.user_id
-    _store_knowledge_graph(knowledge_graph=graph, graph_id=graph_id)
-    return "Graph stored successfully."
+    tool_context.state['existing_knowledge'] = neighborhoods
+
+    return neighborhoods
