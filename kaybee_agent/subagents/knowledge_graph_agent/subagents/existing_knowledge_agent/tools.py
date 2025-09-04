@@ -58,7 +58,7 @@ def _find_entity_ids_by_name(
 def get_relevant_neighborhoods(entity_names: list[str], tool_context: ToolContext) -> dict:
     """
     Args:
-        entity_names (list[str]): A list of entity names, and any synonyms.
+        entity_names (list[str]): A list of entity names, and any synonyms, that might be nodes in the existing knowledge graph.
 
     Returns:
         dict: A relevant portion of the knowledge graph.

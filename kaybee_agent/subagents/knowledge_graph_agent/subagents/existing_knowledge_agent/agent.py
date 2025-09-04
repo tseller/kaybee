@@ -7,7 +7,7 @@ from .tools import get_relevant_neighborhoods
 PROMPT = """
 You are a specialized agent that researches knowledge graphs.
 
-Your input is a conversation snippet, and your task is to retrieve relevant portions of the knowledge graph.
+Your input is a conversation snippet, and your task is to retrieve any portions of the knowledge graph relevant to the topics being discussed.
 
 The tool that can help you do this is `get_relevant_neighborhoods`.
 
