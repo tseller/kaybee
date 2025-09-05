@@ -72,8 +72,10 @@ def store_graph(callback_context: CallbackContext, llm_response: LlmResponse) ->
     Stores the provided graph in the knowledge graph store.
     This will overwrite the existing graph.
     """
-    existing_knowledge_subgraph = callback_context.state['existing_knowledge']
+    if llm_response.partial:
+        return
 
+    existing_knowledge_subgraph = callback_context.state['existing_knowledge']
     updated_knowledge_subgraph = json.loads(llm_response.content.parts[-1].text)
     updated_knowledge_subgraph = _reformat_graph(updated_knowledge_subgraph)
 

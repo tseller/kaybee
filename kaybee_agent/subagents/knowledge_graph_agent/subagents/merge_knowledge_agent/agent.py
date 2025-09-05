@@ -49,6 +49,7 @@ agent = Agent(
     ),
     instruction=PROMPT,
     output_schema=KnowledgeGraph,
+    output_key='updated_knowledge',
     before_agent_callback=check_for_updates,
     after_model_callback=store_graph
 )
