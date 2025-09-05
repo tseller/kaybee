@@ -3,6 +3,7 @@ import os
 from dotenv import load_dotenv
 from typing import Optional
 import uuid
+from floggit import flog
 
 from google.adk.agents.callback_context import CallbackContext
 from google.adk.models import LlmResponse
@@ -67,6 +68,10 @@ def _reformat_graph(g: dict) -> dict:
 
     return g
 
+@flog
+def _record_graph_delta(graph_id: str, old_subgraph: dict, new_subgraph: dict):
+    return
+
 def store_graph(callback_context: CallbackContext, llm_response: LlmResponse) -> Optional[LlmResponse]:
     """
     Stores the provided graph in the knowledge graph store.
@@ -81,6 +86,11 @@ def store_graph(callback_context: CallbackContext, llm_response: LlmResponse) ->
 
     graph_id = callback_context._invocation_context.user_id
     full_knowledge_graph = _fetch_knowledge_graph(graph_id)
+
+    _record_graph_delta(
+            graph_id,
+            old_subgraph=existing_knowledge_subgraph,
+            new_subgraph=updated_knowledge_subgraph)
 
     # Excise existing_knowledge_graph
     full_knowledge_graph['entities'] = {
